@@ -7,13 +7,14 @@ class Crawler(object):
         self.config = config
         self.logger = get_logger("CRAWLER")
         self.frontier = frontier_factory(config, restart)
-        self.workers = list()
+        # Ensure the crawler initializes the correct number of workers, each with a unique worker_id
+        self.workers = [Worker(worker_id=i, config=config, frontier=self.frontier) for i in range(4)] 
         self.worker_factory = worker_factory
 
     def start_async(self):
         self.workers = [
-            self.worker_factory(worker_id, self.config, self.frontier)
-            for worker_id in range(self.config.threads_count)]
+            Worker(worker_id=i, config=self.config, frontier=self.frontier) # modified for multithreads
+            for i in range(self.config.threads_count)]
         for worker in self.workers:
             worker.start()
 
