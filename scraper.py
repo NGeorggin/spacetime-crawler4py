@@ -1,6 +1,15 @@
 import re
+import requests # To make HTTP requests to fetch web pages
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
+import nltk
+from nltk.corpus import stopwords # This is used to acecss a list of stopwords (common words to be filtered out)
+from nltk.tokenize import word_tokenize
+from collections import Counter # This is used to count words efficiently
+
+# Download necesarry NLTK rewoures if not already exists
+nltk.download('punkt', quiet=True)
+nltk.download('stopwords', quiet=True)
 
 
 def scraper(url, resp):
@@ -52,7 +61,37 @@ def is_valid(url):
             + r"|epub|dll|cnf|tgz|sha1"
             + r"|thmx|mso|arff|rtf|jar|csv"
             + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower())
-
-    except TypeError:
+    except TypeError as e:
         print ("TypeError for ", parsed)
         raise
+
+# Process content from a list of URLs
+def fetch_and_process_urls(urls):
+    # Initialize counter object for word counting
+    word_count = Counter()
+
+    # Loop through each URL in the provided list.
+    for url in urls:
+        try:
+            resp = requests.get(url, timeout=10) # Make an HTTP GET request to fetch the webpage and added timeout for dealing with redirects
+            if resp.status == 200:
+
+                text = BeautifulSoup(resp.raw_response.content, 'html.parser').get_text().lower()
+                words = tokenizer(text) # Tokenize the text into words
+
+                # Filter out stopwords from the list of words
+                filtered_words = [word for word in words if word not in stopwords.words('english')]
+                word_count.update(filtered_words)  # Update word frequencies based on the current webpage
+        except Exception as e:
+            print(f"Failed to process {url} : {e}")
+    
+    return word_count
+
+# tokenizer function to split text into words
+def tokenizer(text: str) -> list:
+    # Tokenize the text into words
+    tokens = word_tokenize(text.lower())
+    # Filter out tokens that are not aplhanumeric or are in the list of English stopwords
+    # Examples of stop words in English are “a,” “the,” “is,” “are,” etc.
+    filtered_tokens = [token for token in tokens if token.isalnum() and token not in stopwords.words('english')]
+    return filtered_tokens
